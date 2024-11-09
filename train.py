@@ -17,6 +17,11 @@ import resource
 
 OmegaConf.register_new_resolver("get_local_run_dir", lambda exp_name, local_dirs: get_local_run_dir(exp_name, local_dirs))
 
+def set_cuda_world(devices):
+    s = ""
+    for d in devices:
+        s += str(d)+','
+    os.environ["CUDA_VISIBLE_DEVICES"] = s[:-1]
 
 def worker_main(rank: int, world_size: int, config: DictConfig, policy: nn.Module, reference_model: Optional[nn.Module] = None):
     """Main function for each worker process (may be only 1 for BasicTrainer/TensorParallelTrainer)."""
@@ -29,6 +34,7 @@ def worker_main(rank: int, world_size: int, config: DictConfig, policy: nn.Modul
 
     if rank == 0 and config.wandb.enabled:
         os.environ['WANDB_CACHE_DIR'] = get_local_dir(config.local_dirs)
+        wandb.login(key='ac8217b0848b0b74ed1f9abd8bee6b09afcc7b5c')
         wandb.init(
             entity=config.wandb.entity,
             project=config.wandb.project,
@@ -48,7 +54,7 @@ def worker_main(rank: int, world_size: int, config: DictConfig, policy: nn.Modul
 @hydra.main(version_base=None, config_path="config", config_name="config")
 def main(config: DictConfig):
     """Main entry point for training. Validates config, creates/initializes model(s), and kicks off worker process(es)."""
-
+    set_cuda_world([4,5,6])
     # Resolve hydra references, e.g. so we don't re-compute the run directory
     OmegaConf.resolve(config)
 
@@ -81,14 +87,14 @@ def main(config: DictConfig):
     model_kwargs = {'device_map': 'balanced'} if config.trainer == 'BasicTrainer' else {}
     policy_dtype = getattr(torch, config.model.policy_dtype)
     policy = transformers.AutoModelForCausalLM.from_pretrained(
-        config.model.name_or_path, cache_dir=get_local_dir(config.local_dirs), low_cpu_mem_usage=True, torch_dtype=policy_dtype, **model_kwargs)
+        config.model.name_or_path , low_cpu_mem_usage=True, torch_dtype=policy_dtype, **model_kwargs)
     disable_dropout(policy)
 
     if config.loss.name in {'dpo', 'ipo'}:
         print('building reference model')
         reference_model_dtype = getattr(torch, config.model.reference_dtype)
         reference_model = transformers.AutoModelForCausalLM.from_pretrained(
-            config.model.name_or_path, cache_dir=get_local_dir(config.local_dirs), low_cpu_mem_usage=True, torch_dtype=reference_model_dtype, **model_kwargs)
+            config.model.name_or_path, low_cpu_mem_usage=True, torch_dtype=reference_model_dtype, **model_kwargs)
         disable_dropout(reference_model)
     else:
         reference_model = None
@@ -112,7 +118,6 @@ def main(config: DictConfig):
     else:
         print('starting single-process worker')
         worker_main(0, 1, config, policy, reference_model)
-
 
 if __name__ == '__main__':
     main()
