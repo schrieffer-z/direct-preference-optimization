@@ -30,13 +30,12 @@ wandb:
 #   we will try each of these directories in order; if none exist,
 #   we will create the last one and use it
 local_dirs:
-  - ../../../models
-  - ./datasets
-
+  - ../../../model
+  - ../datasets
 
 # whether or not to generate samples during evaluation; disable for FSDP/TensorParallel
 #   is recommended, because they are slow
-sample_during_eval: true
+sample_during_eval: false
 
 # how many model samples to generate during evaluation
 n_eval_model_samples: 16
@@ -53,7 +52,7 @@ lr: 5e-7
 # number of steps to accumulate over for each batch
 #   (e.g. if batch_size=4 and gradient_accumulation_steps=2, then we will
 #   accumulate gradients over 2 microbatches of size 2)
-gradient_accumulation_steps: 1
+gradient_accumulation_steps: 2
 
 # the maximum gradient norm to clip to
 max_grad_norm: 10.0
@@ -74,7 +73,7 @@ n_examples: null
 n_eval_examples: 256
 
 # the trainer class to use (e.g. BasicTrainer, FSDPTrainer, TensorParallelTrainer)
-trainer: BasicTrainer
+trainer: FSDPTrainer
 
 # The optimizer to use; we use RMSprop because it works about as well as Adam and is more memory-efficient
 optimizer: RMSprop

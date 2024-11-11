@@ -1,0 +1,10 @@
+- model=pythia69
+- loss=dpo
+- loss.beta=0.1
+- lr=3e-7
+- exp_name=sft_pythia69_bs64_ebs32
+- batch_size=32
+- eval_batch_size=16
+- model.fsdp_policy_mp=bfloat16
+- model.archive=../datasets/root/sft_pythia69_bs64_ebs32/LATEST/policy.pt
+- datasets=[hh]

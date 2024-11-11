@@ -1,0 +1,46 @@
+seed: 0
+exp_name: sft_pythia69_bs64_ebs32
+batch_size: 48
+eval_batch_size: 24
+debug: false
+fsdp_port: null
+datasets:
+- hh
+wandb:
+  enabled: true
+  entity: null
+  project: direct-preference-optimization
+local_dirs:
+- ../../../model
+- ../datasets
+sample_during_eval: false
+n_eval_model_samples: 16
+do_first_eval: true
+local_run_dir: ${get_local_run_dir:${exp_name},${local_dirs}}
+lr: 5.0e-07
+gradient_accumulation_steps: 2
+max_grad_norm: 10.0
+max_length: 512
+max_prompt_length: 256
+n_epochs: 1
+n_examples: null
+n_eval_examples: 256
+trainer: FSDPTrainer
+optimizer: RMSprop
+warmup_steps: 150
+activation_checkpointing: false
+eval_every: 20000
+minimum_log_interval_secs: 1.0
+model:
+  name_or_path: ../../../models/pythia-6.9b
+  tokenizer_name_or_path: ../../../models/pythia-6.9b
+  archive: ../datasets/root/sft_pythia69_bs64_ebs32/LATEST/policy.pt
+  block_name: GPTNeoXLayer
+  policy_dtype: float32
+  fsdp_policy_mp: bfloat16
+  reference_dtype: float16
+loss:
+  name: dpo
+  beta: 0.1
+  label_smoothing: 0
+  reference_free: false

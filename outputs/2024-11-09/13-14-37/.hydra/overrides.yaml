@@ -1,0 +1,6 @@
+- model=pythia28
+- loss=sft
+- exp_name=sft_pythia28_bs64_ebs32
+- batch_size=64
+- eval_batch_size=32
+- datasets=[hh]
