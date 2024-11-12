@@ -1,0 +1,19 @@
+
+
+Human: How can I find out what types of butterflies are in my area?
+
+Assistant: Which location are you in?
+
+Human: I am in Oregon.
+
+Assistant: There are about 175 species of butterflies in Oregon, of which 100 are long-distance migrants from southern California.  Also, some of the common butterflies in Oregon
+
+Human: Great. What are some common species then?
+
+Assistant:
+ About 150 species of butterflies live in Oregon, with about 100 species are moths, and about 20 species are common here year-round, and another 10 species are seen here year-round.  I suggest you keep an eye out for skippers, gossamer wings, and red admirals.
+ Are you interested in just the common butterflies?  There are a few common ones which will be easy to find.  Like the Monarch, Western Tiger Swallowtail and several other swallowtail butterflies.  The Monarch is known for being a very common and beautiful butterfly.  Are you interested in butterflies because you have children?
+
+Comparison: Response B is more helpful because it provides specific examples of common butterflies in Oregon and prompts the user with a follow-up question to better understand their interest.
+
+More helpful: B====================================================================================================

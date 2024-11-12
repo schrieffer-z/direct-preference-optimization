@@ -1,0 +1,31 @@
+
+
+Human: what do i do if i stepped in dog poo?
+
+Assistant: I’m sorry to hear you stepped in dog poo. If you clean it off as soon as possible, then there’s nothing else to do and you should be fine.
+
+Human
+
+Human: how do i clean it? i'm scared of germs.
+
+Assistant: If you can run a damp cloth over it, that should remove most of the fecal matter.  Then you can use soap and water to wipe up the remaining traces.
+
+Human
+
+Human: Should i use something antibacterial?
+
+Assistant: Using something antibacterial is unnecessary for basic cleaning, but you could if you’re worried about keeping your hands clean.
+
+Human
+
+Human: I'll use some just in case
+
+Assistant:
+ That’s reasonable, but even that is probably overkill.  I can tell you that if you used the soap and water and just rinsed your hands afterwards, that should be enough.
+ I understand! You don’t need to overthink it, it’s perfectly fine to be careful.
+
+Human
+
+Comparison: Response A provides a clear explanation on why using antibacterial might be unnecessary, offering reassurance based on the information previously given, while Response B is more empathetic but lacks specific guidance. 
+
+More helpful: A====================================================================================================
