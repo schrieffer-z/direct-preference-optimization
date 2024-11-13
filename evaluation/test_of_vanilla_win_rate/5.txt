@@ -1,0 +1,63 @@
+
+
+Human: Search for best ac/dc songs.
+
+Assistant: There are many good songs by the British rock band AC/DC, but you might not know which are the most popular, because the band has been playing for decades, and lots of people have their own favorites.  Here are the ones that have been played on the radio the most recently, including a list of their most popular songs:  
+
+1.  ‘For Those About To Rock (We Salute You)’  by the band AC/DC
+2.  ‘Let There Be Rock’  by the band AC/DC
+3.  ‘Highway to Hell’  by the band AC/DC
+4.  ‘Back in Black’  by the band AC/DC
+5.  ‘Rock N Roll Train’  by the band AC/DC
+6.  ‘Dirty Deeds Done Dirt Cheap’  by the band AC/DC
+7.  ‘Hells Bells’  by the band AC/DC
+8.  ‘For Those About To Rock (We Salute You)’  by the band AC/DC
+9.  ‘Black Ice’  by the band AC/DC
+10. ‘Have a Drink on Me’  by the band AC/DC
+
+Human: I like 1, 3, 4, 6, 7.
+
+Assistant:
+Response A:
+
+Human: Search for best ac/dc songs.
+
+Assistant: There are many good songs by the British rock band AC/DC, but you might not know which are the most popular, because the band has been playing for decades, and lots of people have their own favorites.  Here are the ones that have been played on the radio the most recently, including a list of their most popular songs:  
+
+1.  ‘For Those About To Rock (We Salute You)’  by the band AC/DC
+2.  ‘Let There Be Rock’  by the band AC/DC
+3.  ‘Highway to Hell’  by the band AC/DC
+4.  ‘Back in Black’  by the band AC/DC
+5.  ‘Rock N Roll Train’  by the band AC/DC
+6.  ‘Dirty Deeds Done Dirt Cheap’  by the band AC/DC
+7.  ‘Hells Bells’  by the band AC/DC
+8.  ‘For Those About To Rock (We Salute You)’  by the band AC/DC
+9.  ‘Black Ice’  by the band AC/DC
+10. ‘Have a Drink on Me’  by the band AC/DC
+
+Human: I like 1, 3, 4, 6, 7.
+
+Assistant: You might also like the song ‘Back in Black’ by the band AC/DC, which is the most popular song on the list.  It’s a great song, and it’s also a great example of the band’s style.  Here’s a link to the song:  https://www.youtube.com/watch?v=1_1_1_1_1o
+Response B:
+
+Human: Search for best ac/dc songs.
+
+Assistant: There are many good songs by the British rock band AC/DC, but you might not know which are the most popular, because the band has been playing for decades, and lots of people have their own favorites.  Here are the ones that have been played on the radio the most recently, including a list of their most popular songs:  
+
+1.  ‘For Those About To Rock (We Salute You)’  by the band AC/DC
+2.  ‘Let There Be Rock’  by the band AC/DC
+3.  ‘Highway to Hell’  by the band AC/DC
+4.  ‘Back in Black’  by the band AC/DC
+5.  ‘Rock N Roll Train’  by the band AC/DC
+6.  ‘Dirty Deeds Done Dirt Cheap’  by the band AC/DC
+7.  ‘Hells Bells’  by the band AC/DC
+8.  ‘For Those About To Rock (We Salute You)’  by the band AC/DC
+9.  ‘Black Ice’  by the band AC/DC
+10. ‘Have a Drink on Me’  by the band AC/DC
+
+Human: I like 1, 3, 4, 6, 7.
+
+Assistant: You’re right.  You’re also right that the band has been around for a long time, and that they have a lot of songs.  But you’re wrong that they’re popular.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back in Black’, which has been played on the radio the most recently.  The most popular song by the band AC/DC is ‘Back
+
+Comparison: Response A is more concise and directly recommends a song with additional useful information, whereas Response B is repetitive and fails to provide any new content. 
+More helpful: A

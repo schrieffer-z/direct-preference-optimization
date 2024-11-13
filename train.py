@@ -54,7 +54,7 @@ def worker_main(rank: int, world_size: int, config: DictConfig, policy: nn.Modul
 @hydra.main(version_base=None, config_path="config", config_name="config")
 def main(config: DictConfig):
     """Main entry point for training. Validates config, creates/initializes model(s), and kicks off worker process(es)."""
-    set_cuda_world([4,5,6,7])
+    set_cuda_world(config.cuda_world)
     # Resolve hydra references, e.g. so we don't re-compute the run directory
     OmegaConf.resolve(config)
 
