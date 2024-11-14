@@ -5,6 +5,7 @@ import torch.nn as nn
 import transformers
 import datasets
 from omegaconf import DictConfig
+import alpaca_eval
 
 import torch.distributed as dist
 from torch.distributed.fsdp import (
@@ -356,51 +357,51 @@ class BasicTrainer(object):
                         if self.config.loss.name in {'dpo', 'ipo'}:
                             wandb.log({"reference_samples": reference_text_table}, step=self.example_counter)
 
-                # if self.example_counter > 0:
-                #     if self.config.debug:
-                #         rank0_print('skipping save in debug mode')
-                #     else:
-                #         output_dir = os.path.join(self.run_dir, f'step-{self.example_counter}')
-                #         rank0_print(f'creating checkpoint to write to {output_dir}...')
-                #         self.save(output_dir, mean_eval_metrics)
-                print("Calling Alpaca Eval Subprocess")
+                if self.example_counter > 0:
+                    if self.config.debug:
+                        rank0_print('skipping save in debug mode')
+                    else:
+                        output_dir = os.path.join(self.run_dir, f'step-{self.example_counter}')
+                        rank0_print(f'creating checkpoint to write to {output_dir}...')
+                        self.save(output_dir, mean_eval_metrics)
+                # print("Calling Alpaca Eval Subprocess")
 
-                batches = generate_batch(eval_set, 8)
-                model_outputs = {'instruction':[], 'output':[], 'generator':[], 'dataset':[]}
-                tokenizer = transformers.AutoTokenizer.from_pretrained('../../../models/pythia-6.9b', padding_side='left')
-                with torch.no_grad():
-                    with tqdm(total=len(batches)) as pbar:
-                        for batch in batches:
-                            inputs = tokenizer(batch['instruction'], return_tensors="pt", padding=True, max_length=256)
-                            outputs = self.policy.generate(**inputs, max_length=512)
+                # batches = generate_batch(eval_set, 8)
+                # model_outputs = {'instruction':[], 'output':[], 'generator':[], 'dataset':[]}
+                # tokenizer = transformers.AutoTokenizer.from_pretrained('../../../models/pythia-6.9b', padding_side='left')
+                # tokenizer.pad_token_id=0
+                # with torch.no_grad():
+                #     with tqdm.tqdm(total=len(batches)) as pbar:
+                #         for batch in batches:
+                #             inputs = tokenizer(batch['instruction'], return_tensors="pt", padding=True, max_length=256).to(torch.device('cuda:4'))
+                #             outputs = self.policy.generate(**inputs, max_length=512)
 
-                            batch["output"] = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
-                            batch["generator"] = ["OURS"]*len(batch)
-                            for key in model_outputs.keys():
-                                model_outputs[key] += batch[key]
-                            pbar.update(1)
+                #             batch["output"] = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
+                #             batch["generator"] = ["OURS"]*len(batch)
+                #             for key in model_outputs.keys():
+                #                 model_outputs[key] += batch[key]
+                #             pbar.update(1)
 
-                to_save = []
-                for i in range(len(model_outputs['instruction'])):
-                    to_save.append({
-                        'instruction':model_outputs['instruction'][i], 
-                        'output':model_outputs['output'][i], 
-                        'generator':model_outputs['generator'][i], 
-                        'dataset':model_outputs['dataset'][i]
-                        })
-
-                with open(f'evaluation/step_{self.example_counter}.json', 'w', encoding='utf-8') as f:
-                    json.dump(to_save, f, ensure_ascii=True, indent=4)
+                # to_save = []
+                # for i in range(len(model_outputs['instruction'])):
+                #     to_save.append({
+                #         'instruction':model_outputs['instruction'][i], 
+                #         'output':model_outputs['output'][i], 
+                #         'generator':model_outputs['generator'][i], 
+                #         'dataset':model_outputs['dataset'][i]
+                #         })
+                    
+                # model_outputs_path = f'./evaluation/step_{self.example_counter}.json'
+                # with open(model_outputs_path, 'w', encoding='utf-8') as f:
+                #     json.dump(to_save, f, ensure_ascii=True, indent=4)
+                # alpaca_eval.evaluate(
+                #     model_outputs=model_outputs_path,
+                #     reference_outputs='./evaluation/pythia_6.9b_post_sft.json',
+                #     annotators_config='alpaca_eval_gpt4_turbo_fn', 
+                #     output_path='./evaluation',
+                #     precomputed_leaderboard='./evaluation/alpaca_eval_gpt4_turbo_fn/leaderboard.csv')
                 
-                os.makedirs(f'./evaluation/step_{self.example_counter}', exist_ok=True)
-                process = subprocess.Popen(['alpaca_eval', 'evaluate', 
-                                            '--model_outputs \'./evaluation/outputs.json\'',
-                                            '--reference_outputs \'./evaluation/ref_pythia_6.9b.json\'',
-                                            '--annotators_config \'alpaca_eval_gpt4_turbo_fn\'',
-                                            f'--output_path \'./evaluation/step_{self.example_counter}\''
-                                            ])
-                process.wait()
-                print("Alpaca Eval Finished")
+                # print("Alpaca Eval Finished")
             #### END EVALUATION ####
 
 

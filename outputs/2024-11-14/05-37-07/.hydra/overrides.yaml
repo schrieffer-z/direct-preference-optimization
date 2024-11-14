@@ -1,0 +1,11 @@
+- cuda_world=[0,1,2,3]
+- model=pythia69
+- loss.beta=0.1
+- lr=3.75e-7
+- exp_name=dpo_pythia69_bs32_ebs16
+- batch_size=32
+- eval_batch_size=16
+- model.archive=../datasets/root/sft_pythia69_bs64_ebs32/policy.pt
+- datasets=[hh]
+- model.fsdp_policy_mp=bfloat16
+- loss=dpo
