@@ -6,7 +6,9 @@
 export OPENAI_API_BASE="https://xiaoai.plus/v1"
 export OPENAI_API_KEY="sk-9DjgE9RuYiLaGm8NGB5oApMX3mEAzZaZiS66XMbHwBYqAm1S"
 
-alpaca_eval --model_outputs './evaluation/pythia_6.9b/pythia_6.9b_post_dpo_step_40000.json' \
+alpaca_eval --model_outputs './evaluation/pythia_6.9b/pythia_6.9b_post_dpo_step_20000.json' \
 --reference_outputs './evaluation/reference_model/pythia_6.9b_post_sft.json' \
 --annotators_config 'alpaca_eval_gpt4_turbo_fn' \
 --output_path './evaluation/test'
+
+
