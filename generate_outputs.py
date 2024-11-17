@@ -3,7 +3,6 @@ import torch
 from tqdm import tqdm
 import os
 import json
-import alpaca_eval
 from transformers import AutoModelForCausalLM, AutoTokenizer
 
 def generate_batch(dataset, bs=64):
@@ -16,14 +15,14 @@ def generate_batch(dataset, bs=64):
     return dict_list
 
 device = torch.device('cuda:7')
-model_size = '6.9b'
+model_size = '2.8b'
 outputs_path = f'./evaluation/pythia_{model_size}'
-checkpoints_path = '/mnt/vepfs/fs_users/lisihang/xAI-RLHF/Shuyi/datasets/root/dpo_beta0.1_pythia69_bs32_ebs16/'
+checkpoints_path = f'/mnt/vepfs/fs_users/lisihang/xAI-RLHF/Shuyi/datasets/root/dpo_beta0.1_pythia{model_size[0]+model_size[2]}_bs64_ebs32/'
 
 
-policy_model = AutoModelForCausalLM.from_pretrained(f'../../../models/pythia-{model_size}' , low_cpu_mem_usage=True, torch_dtype=torch.float32).to(device)
-tokenizer = AutoTokenizer.from_pretrained(f'../../../models/pythia-{model_size}', padding_side='left')
-tokenizer.pad_token_id = 0
+policy_model = AutoModelForCausalLM.from_pretrained(f'../../../models/EleutherAI/pythia-{model_size}' , low_cpu_mem_usage=True, torch_dtype=torch.float32).to(device)
+tokenizer = AutoTokenizer.from_pretrained(f'../../../models/EleutherAI/pythia-{model_size}', padding_side='left')
+tokenizer.pad_token_id = tokenizer.eos_token_id
 
 
 for step_name in os.listdir(checkpoints_path):

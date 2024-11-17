@@ -6,6 +6,7 @@ import transformers
 import datasets
 from omegaconf import DictConfig
 import alpaca_eval
+from preference_datasets import get_collate_fn
 
 import torch.distributed as dist
 from torch.distributed.fsdp import (
@@ -21,8 +22,11 @@ from torch.distributed.fsdp.wrap import transformer_auto_wrap_policy
 import tensor_parallel as tp
 import contextlib
 
-from preference_datasets import get_batch_iterator
+
+from preference_datasets import get_batch_iterator, tokenize_batch_element
+
 from utils import (
+    TemporarilySeededRandom,
     slice_and_move_batch_for_device,
     formatted_dict,
     all_gather_if_needed,
@@ -299,8 +303,6 @@ class BasicTrainer(object):
         self.batch_counter = 0
         last_log = None
 
-        eval_set = datasets.load_dataset("tatsu-lab/alpaca_eval", "alpaca_eval", cache_dir='../datasets')["eval"]
-
         for batch in self.train_iterator:
             #### BEGIN EVALUATION ####
             if self.example_counter % self.config.eval_every == 0 and (self.example_counter > 0 or self.config.do_first_eval):
@@ -473,12 +475,12 @@ class BasicTrainer(object):
         self.write_state_dict(self.example_counter, policy_state_dict, metrics, 'policy.pt', output_dir)
         del policy_state_dict
 
-        optimizer_state_dict = self.optimizer.state_dict()
-        self.write_state_dict(self.example_counter, optimizer_state_dict, metrics, 'optimizer.pt', output_dir)
-        del optimizer_state_dict
+        # optimizer_state_dict = self.optimizer.state_dict()
+        # self.write_state_dict(self.example_counter, optimizer_state_dict, metrics, 'optimizer.pt', output_dir)
+        # del optimizer_state_dict
 
-        scheduler_state_dict = self.scheduler.state_dict()
-        self.write_state_dict(self.example_counter, scheduler_state_dict, metrics, 'scheduler.pt', output_dir)
+        # scheduler_state_dict = self.scheduler.state_dict()
+        # self.write_state_dict(self.example_counter, scheduler_state_dict, metrics, 'scheduler.pt', output_dir)
 
 
 class FSDPTrainer(BasicTrainer):
@@ -559,19 +561,19 @@ class FSDPTrainer(BasicTrainer):
         del policy_state_dict
         dist.barrier()
 
-        save_policy = FullOptimStateDictConfig(offload_to_cpu=True, rank0_only=True)
-        with FSDP.state_dict_type(self.policy, StateDictType.FULL_STATE_DICT, optim_state_dict_config=save_policy):
-            optimizer_state_dict = FSDP.optim_state_dict(self.policy, self.optimizer)
+        # save_policy = FullOptimStateDictConfig(offload_to_cpu=True, rank0_only=True)
+        # with FSDP.state_dict_type(self.policy, StateDictType.FULL_STATE_DICT, optim_state_dict_config=save_policy):
+        #     optimizer_state_dict = FSDP.optim_state_dict(self.policy, self.optimizer)
 
-        if self.rank == 0:
-            self.write_state_dict(self.example_counter, optimizer_state_dict, metrics, 'optimizer.pt', output_dir)
-        del optimizer_state_dict
-        dist.barrier()
+        # if self.rank == 0:
+        #     self.write_state_dict(self.example_counter, optimizer_state_dict, metrics, 'optimizer.pt', output_dir)
+        # del optimizer_state_dict
+        # dist.barrier()
 
-        if self.rank == 0:
-            scheduler_state_dict = self.scheduler.state_dict()
-            self.write_state_dict(self.example_counter, scheduler_state_dict, metrics, 'scheduler.pt', output_dir)
-        dist.barrier()
+        # if self.rank == 0:
+        #     scheduler_state_dict = self.scheduler.state_dict()
+        #     self.write_state_dict(self.example_counter, scheduler_state_dict, metrics, 'scheduler.pt', output_dir)
+        # dist.barrier()
         
 
 class TensorParallelTrainer(BasicTrainer):
@@ -596,4 +598,181 @@ class TensorParallelTrainer(BasicTrainer):
     
         self.write_state_dict(self.example_counter, policy_state_dict, metrics, 'policy.pt', output_dir)
         del policy_state_dict
+
+
+
+
+class MyTrainer(BasicTrainer):
+    def __init__(self, policy: nn.Module, config: DictConfig, seed: int, run_dir: str, reference_model: Optional[nn.Module] = None, rank: int = 0, world_size: int = 1):
+        """A trainer subclass that uses PyTorch FSDP to shard the model across multiple GPUs.
         
+           This trainer will shard both the policy and reference model across all available GPUs.
+           Models are sharded at the block level, where the block class name is provided in the config.
+        """
+
+        super().__init__(policy, config, seed, run_dir, reference_model, rank, world_size)
+        assert config.model.block_name is not None, 'must specify model.block_name (e.g., GPT2Block or GPTNeoXLayer) for FSDP'
+
+        wrap_class = get_block_class_from_model(policy, config.model.block_name)
+        model_auto_wrap_policy = functools.partial(transformer_auto_wrap_policy, transformer_layer_cls={wrap_class},)
+
+        shared_fsdp_kwargs = dict(
+            auto_wrap_policy=model_auto_wrap_policy,
+            sharding_strategy=ShardingStrategy.FULL_SHARD,
+            cpu_offload=CPUOffload(offload_params=False),
+            backward_prefetch=BackwardPrefetch.BACKWARD_PRE,
+            device_id=rank,
+            ignored_modules=None,
+            limit_all_gathers=False,
+            use_orig_params=False,
+            sync_module_states=False
+        )
+
+        rank0_print('Sharding policy...')
+        mp_dtype = getattr(torch, config.model.fsdp_policy_mp) if config.model.fsdp_policy_mp is not None else None
+        policy_mp_policy = MixedPrecision(param_dtype=mp_dtype, reduce_dtype=mp_dtype, buffer_dtype=mp_dtype)
+        self.policy = FSDP(policy, **shared_fsdp_kwargs, mixed_precision=policy_mp_policy)
+
+        if config.loss.name in {'dpo', 'ipo'}:
+            rank0_print('Sharding reference model...')
+            self.reference_model = FSDP(reference_model, **shared_fsdp_kwargs)
+        
+        print('Loaded model on rank', rank)
+        self.alpaca_eval_iterator = self.get_batch_iterator(n_examples=256, batch_size=32, silent=False)
+        dist.barrier()
+
+    def get_batch_iterator(self, batch_size, n_examples):
+
+        with TemporarilySeededRandom(114514):
+            permutation_seeds = iter(np.random.randint(0, 2**32, size=1000000))
+            flat_data = []
+            eval_set = datasets.load_dataset("tatsu-lab/alpaca_eval", "alpaca_eval", cache_dir='../datasets')["eval"]
+
+            for prompt, data in eval_set.items():
+                flat_data.append((prompt, data['responses'], data['pairs'], data['sft_target'], 'keep_end'))
+        
+        tokenizer = transformers.AutoTokenizer.from_pretrained("../../../models/Eleuther-AI/pythia-2.8b")
+        collate_fn = get_collate_fn(tokenizer)
+
+        epoch_idx = 0
+        example_idx = 0
+        done = False
+        while True:
+            with TemporarilySeededRandom(next(permutation_seeds)):
+                random.shuffle(flat_data)
+
+            batch = []
+            for prompt, responses, pairs, _, truncation_mode in flat_data:
+                if done:
+                    break
+                for p in pairs:
+                    if done:
+                        break
+                    batch_element = tokenize_batch_element(prompt, responses[p[0]], responses[p[1]], truncation_mode, tokenizer, 512, 256)
+                    batch.append(batch_element)
+                    example_idx += 1
+                    if len(batch) == batch_size:
+                        yield collate_fn(batch)
+                        if n_examples is not None and example_idx >= n_examples:
+                            done = True
+                        batch = []
+            if done:
+                break
+
+        epoch_idx += 1
+
+
+    def train(self):
+        """Begin either SFT or DPO training, with periodic evaluation."""
+
+        rank0_print(f'Using {self.config.optimizer} optimizer')
+        
+        torch.manual_seed(self.seed)
+        np.random.seed(self.seed)
+        random.seed(self.seed)
+
+        if self.config.loss.name in {'dpo', 'ipo'}:
+            self.reference_model.eval()
+
+        self.example_counter = 0
+        self.batch_counter = 0
+
+        # 
+        rank0_print(f'Running evaluation after {self.example_counter} train examples')
+        self.policy.eval()
+
+        all_eval_metrics = defaultdict(list)
+
+        for eval_batch in (tqdm.tqdm(self.alpaca_eval_iterator, desc='Computing eval metrics') if self.rank == 0 else self.eval_batches):
+            local_eval_batch = slice_and_move_batch_for_device(eval_batch, self.rank, self.world_size, self.rank)
+            with torch.no_grad():
+                _, eval_metrics = self.get_batch_metrics(local_eval_batch, self.config.loss, train=False)
+
+            for k, v in eval_metrics.items():
+                all_eval_metrics[k].extend(v)
+
+
+        mean_eval_metrics = {k: sum(v) / len(v) for k, v in all_eval_metrics.items()}
+        # rank0_print(f'eval after {self.example_counter}: {formatted_dict(mean_eval_metrics)}')
+        if self.config.sample_during_eval:                    
+            rank0_print(json.dumps(all_policy_samples[:10], indent=2))
+            if self.config.loss.name in {'dpo', 'ipo'}:
+                rank0_print(json.dumps(all_reference_samples[:10], indent=2))
+
+        if self.config.wandb.enabled and self.rank == 0:
+            wandb.log(mean_eval_metrics, step=self.example_counter)
+
+            if self.config.sample_during_eval:
+                wandb.log({"policy_samples": policy_text_table}, step=self.example_counter)
+                if self.config.loss.name in {'dpo', 'ipo'}:
+                    wandb.log({"reference_samples": reference_text_table}, step=self.example_counter)
+
+        if self.example_counter > 0:
+            if self.config.debug:
+                rank0_print('skipping save in debug mode')
+            else:
+                output_dir = os.path.join(self.run_dir, f'step-{self.example_counter}')
+                rank0_print(f'creating checkpoint to write to {output_dir}...')
+                self.save(output_dir, mean_eval_metrics)
+
+
+            # #### BEGIN TRAINING ####
+            # self.policy.train()
+
+            # start_time = time.time()
+            # batch_metrics = defaultdict(list)
+            # for microbatch_idx in range(self.config.gradient_accumulation_steps):
+            #     global_microbatch = slice_and_move_batch_for_device(batch, microbatch_idx, self.config.gradient_accumulation_steps, self.rank)
+            #     local_microbatch = slice_and_move_batch_for_device(global_microbatch, self.rank, self.world_size, self.rank)
+            #     loss, metrics = self.get_batch_metrics(local_microbatch, self.config.loss, train=True)
+            #     (loss / self.config.gradient_accumulation_steps).backward()
+
+            #     for k, v in metrics.items():
+            #         batch_metrics[k].extend(v)
+
+            # grad_norm = self.clip_gradient()
+            # self.optimizer.step()
+            # self.scheduler.step()
+            # self.optimizer.zero_grad()
+
+            # step_time = time.time() - start_time
+            # examples_per_second = self.config.batch_size / step_time
+            # batch_metrics['examples_per_second'].append(examples_per_second)
+            # batch_metrics['grad_norm'].append(grad_norm)
+
+            # self.batch_counter += 1
+            # self.example_counter += self.config.batch_size
+
+            # if last_log is None or time.time() - last_log > self.config.minimum_log_interval_secs:
+            #     mean_train_metrics = {k: sum(v) / len(v) for k, v in batch_metrics.items()}
+            #     mean_train_metrics['counters/examples'] = self.example_counter
+            #     mean_train_metrics['counters/updates'] = self.batch_counter
+            #     rank0_print(f'train stats after {self.example_counter} examples: {formatted_dict(mean_train_metrics)}')
+
+            #     if self.config.wandb.enabled and self.rank == 0:
+            #         wandb.log(mean_train_metrics, step=self.example_counter)
+
+            #     last_log = time.time()
+            # else:
+            #     rank0_print(f'skipping logging after {self.example_counter} examples to avoid logging too frequently')
+            # #### END TRAINING ####

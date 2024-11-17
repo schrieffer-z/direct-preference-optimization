@@ -1,0 +1,2 @@
+,win_rate,standard_error,n_wins,n_wins_base,n_draws,n_total,discrete_win_rate,mode,avg_length
+pythia_2.8b_post_dpo_step_139776,49.130434782608695,1.7265700131481074,379,393,33,805,49.130434782608695,community,1156

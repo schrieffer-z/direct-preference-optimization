@@ -1,5 +1,5 @@
-name_or_path: ../../../models/pythia-2.8b
-tokenizer_name_or_path: ../../../models/pythia-2.8b
+name_or_path: ../../../models/EleutherAI/pythia-2.8b
+tokenizer_name_or_path: ../../../models/EleutherAI/pythia-2.8b
 archive: null
 block_name: GPTNeoXLayer
 
