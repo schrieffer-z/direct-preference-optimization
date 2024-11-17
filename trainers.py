@@ -710,69 +710,10 @@ class MyTrainer(BasicTrainer):
 
             for k, v in eval_metrics.items():
                 all_eval_metrics[k].extend(v)
-
-
         mean_eval_metrics = {k: sum(v) / len(v) for k, v in all_eval_metrics.items()}
-        # rank0_print(f'eval after {self.example_counter}: {formatted_dict(mean_eval_metrics)}')
-        if self.config.sample_during_eval:                    
-            rank0_print(json.dumps(all_policy_samples[:10], indent=2))
-            if self.config.loss.name in {'dpo', 'ipo'}:
-                rank0_print(json.dumps(all_reference_samples[:10], indent=2))
 
-        if self.config.wandb.enabled and self.rank == 0:
-            wandb.log(mean_eval_metrics, step=self.example_counter)
+        
+        
 
-            if self.config.sample_during_eval:
-                wandb.log({"policy_samples": policy_text_table}, step=self.example_counter)
-                if self.config.loss.name in {'dpo', 'ipo'}:
-                    wandb.log({"reference_samples": reference_text_table}, step=self.example_counter)
+    
 
-        if self.example_counter > 0:
-            if self.config.debug:
-                rank0_print('skipping save in debug mode')
-            else:
-                output_dir = os.path.join(self.run_dir, f'step-{self.example_counter}')
-                rank0_print(f'creating checkpoint to write to {output_dir}...')
-                self.save(output_dir, mean_eval_metrics)
-
-
-            # #### BEGIN TRAINING ####
-            # self.policy.train()
-
-            # start_time = time.time()
-            # batch_metrics = defaultdict(list)
-            # for microbatch_idx in range(self.config.gradient_accumulation_steps):
-            #     global_microbatch = slice_and_move_batch_for_device(batch, microbatch_idx, self.config.gradient_accumulation_steps, self.rank)
-            #     local_microbatch = slice_and_move_batch_for_device(global_microbatch, self.rank, self.world_size, self.rank)
-            #     loss, metrics = self.get_batch_metrics(local_microbatch, self.config.loss, train=True)
-            #     (loss / self.config.gradient_accumulation_steps).backward()
-
-            #     for k, v in metrics.items():
-            #         batch_metrics[k].extend(v)
-
-            # grad_norm = self.clip_gradient()
-            # self.optimizer.step()
-            # self.scheduler.step()
-            # self.optimizer.zero_grad()
-
-            # step_time = time.time() - start_time
-            # examples_per_second = self.config.batch_size / step_time
-            # batch_metrics['examples_per_second'].append(examples_per_second)
-            # batch_metrics['grad_norm'].append(grad_norm)
-
-            # self.batch_counter += 1
-            # self.example_counter += self.config.batch_size
-
-            # if last_log is None or time.time() - last_log > self.config.minimum_log_interval_secs:
-            #     mean_train_metrics = {k: sum(v) / len(v) for k, v in batch_metrics.items()}
-            #     mean_train_metrics['counters/examples'] = self.example_counter
-            #     mean_train_metrics['counters/updates'] = self.batch_counter
-            #     rank0_print(f'train stats after {self.example_counter} examples: {formatted_dict(mean_train_metrics)}')
-
-            #     if self.config.wandb.enabled and self.rank == 0:
-            #         wandb.log(mean_train_metrics, step=self.example_counter)
-
-            #     last_log = time.time()
-            # else:
-            #     rank0_print(f'skipping logging after {self.example_counter} examples to avoid logging too frequently')
-            # #### END TRAINING ####
