@@ -57,7 +57,6 @@ def get_local_run_dir(exp_name: str, local_dirs: List[str]) -> str:
     now = datetime.now()
     timestamp = now.strftime("%Y-%m-%d_%H-%M-%S_%f")
     run_dir = f"{get_local_dir(local_dirs)}/{exp_name}_{timestamp}"
-    os.makedirs(run_dir, exist_ok=True)
     return run_dir
 
 

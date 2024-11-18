@@ -638,11 +638,10 @@ class MyTrainer(BasicTrainer):
             self.reference_model = FSDP(reference_model, **shared_fsdp_kwargs)
         
         print('Loaded model on rank', rank)
-        self.alpaca_eval_iterator = self.get_batch_iterator(n_examples=256, batch_size=32, silent=False)
+        self.alpaca_eval_iterator = self.get_batch_iterator(n_examples=256, batch_size=32)
         dist.barrier()
 
     def get_batch_iterator(self, batch_size, n_examples):
-
         with TemporarilySeededRandom(114514):
             permutation_seeds = iter(np.random.randint(0, 2**32, size=1000000))
             flat_data = []
@@ -697,7 +696,6 @@ class MyTrainer(BasicTrainer):
         self.example_counter = 0
         self.batch_counter = 0
 
-        # 
         rank0_print(f'Running evaluation after {self.example_counter} train examples')
         self.policy.eval()
 
@@ -713,6 +711,9 @@ class MyTrainer(BasicTrainer):
         mean_eval_metrics = {k: sum(v) / len(v) for k, v in all_eval_metrics.items()}
 
         
+
+
+
         
 
     

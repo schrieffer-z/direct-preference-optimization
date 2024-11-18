@@ -2,7 +2,7 @@
 seed: 0
 
 # name for this experiment in the local run directory and on wandb
-exp_name: ???
+exp_name: ""
 
 # world size of device
 cuda_world: [0]
@@ -33,8 +33,9 @@ wandb:
 #   we will try each of these directories in order; if none exist,
 #   we will create the last one and use it
 local_dirs:
-  - ../../../model
   - ../datasets
+  - ../../../model
+
 
 # whether or not to generate samples during evaluation; disable for FSDP/TensorParallel
 #   is recommended, because they are slow

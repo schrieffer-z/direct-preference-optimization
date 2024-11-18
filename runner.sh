@@ -13,8 +13,8 @@ model=pythia28 exp_name=sft_pythia28_bs64_ebs32 \
 datasets=[hh] loss=sft
 
 # dpo
-python -u train.py cuda_world=[0,1,2,3] batch_size=64 eval_batch_size=32 lr=5e-8 \
-model=pythia28 loss=dpo loss.beta=0.1 exp_name=dpo_lr5e-8_beta0.1_pythia28_bs64_ebs32/ \
+python -u train.py cuda_world=[0,1,2,3] batch_size=64 eval_batch_size=32 lr=1e-7 \
+model=pythia28 loss=dpo loss.beta=0.1 exp_name=dpo_lr1e-7_beta0.1_pythia28_bs64_ebs32/ \
 model.archive=../datasets/root/sft_pythia28_bs64_ebs32/policy.pt \
 datasets=[hh] model.fsdp_policy_mp=bfloat16 trainer=FSDPTrainer 
 

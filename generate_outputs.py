@@ -14,13 +14,19 @@ def generate_batch(dataset, bs=64):
         i+=1
     return dict_list
 
-device = torch.device('cuda:7')
+#======================================================
 model_size = '2.8b'
+lr = '1e-7'
+beta = '0.1'
+device = torch.device('cuda:7')
+#======================================================
+
+
 outputs_path = f'./evaluation/pythia_{model_size}'
-checkpoints_path = f'/mnt/vepfs/fs_users/lisihang/xAI-RLHF/Shuyi/datasets/root/dpo_beta0.1_pythia{model_size[0]+model_size[2]}_bs64_ebs32/'
+checkpoints_path = f'/mnt/vepfs/fs_users/lisihang/xAI-RLHF/Shuyi/datasets/root/dpo_lr{lr}_beta{beta}_pythia{model_size[0]+model_size[2]}_bs64_ebs32/'
 
 
-policy_model = AutoModelForCausalLM.from_pretrained(f'../../../models/EleutherAI/pythia-{model_size}' , low_cpu_mem_usage=True, torch_dtype=torch.float32).to(device)
+policy_model = AutoModelForCausalLM.from_pretrained(f'../../../models/EleutherAI/pythia-{model_size}_' , low_cpu_mem_usage=True, torch_dtype=torch.float32).to(device)
 tokenizer = AutoTokenizer.from_pretrained(f'../../../models/EleutherAI/pythia-{model_size}', padding_side='left')
 tokenizer.pad_token_id = tokenizer.eos_token_id
 
