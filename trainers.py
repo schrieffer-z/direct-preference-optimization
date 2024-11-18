@@ -366,47 +366,7 @@ class BasicTrainer(object):
                         output_dir = os.path.join(self.run_dir, f'step-{self.example_counter}')
                         rank0_print(f'creating checkpoint to write to {output_dir}...')
                         self.save(output_dir, mean_eval_metrics)
-                # print("Calling Alpaca Eval Subprocess")
-
-                # batches = generate_batch(eval_set, 8)
-                # model_outputs = {'instruction':[], 'output':[], 'generator':[], 'dataset':[]}
-                # tokenizer = transformers.AutoTokenizer.from_pretrained('../../../models/pythia-6.9b', padding_side='left')
-                # tokenizer.pad_token_id=0
-                # with torch.no_grad():
-                #     with tqdm.tqdm(total=len(batches)) as pbar:
-                #         for batch in batches:
-                #             inputs = tokenizer(batch['instruction'], return_tensors="pt", padding=True, max_length=256).to(torch.device('cuda:4'))
-                #             outputs = self.policy.generate(**inputs, max_length=512)
-
-                #             batch["output"] = [tokenizer.decode(output, skip_special_tokens=True) for output in outputs]
-                #             batch["generator"] = ["OURS"]*len(batch)
-                #             for key in model_outputs.keys():
-                #                 model_outputs[key] += batch[key]
-                #             pbar.update(1)
-
-                # to_save = []
-                # for i in range(len(model_outputs['instruction'])):
-                #     to_save.append({
-                #         'instruction':model_outputs['instruction'][i], 
-                #         'output':model_outputs['output'][i], 
-                #         'generator':model_outputs['generator'][i], 
-                #         'dataset':model_outputs['dataset'][i]
-                #         })
-                    
-                # model_outputs_path = f'./evaluation/step_{self.example_counter}.json'
-                # with open(model_outputs_path, 'w', encoding='utf-8') as f:
-                #     json.dump(to_save, f, ensure_ascii=True, indent=4)
-                # alpaca_eval.evaluate(
-                #     model_outputs=model_outputs_path,
-                #     reference_outputs='./evaluation/pythia_6.9b_post_sft.json',
-                #     annotators_config='alpaca_eval_gpt4_turbo_fn', 
-                #     output_path='./evaluation',
-                #     precomputed_leaderboard='./evaluation/alpaca_eval_gpt4_turbo_fn/leaderboard.csv')
-                
-                # print("Alpaca Eval Finished")
             #### END EVALUATION ####
-
-
 
             #### BEGIN TRAINING ####
             self.policy.train()
@@ -601,6 +561,71 @@ class TensorParallelTrainer(BasicTrainer):
 
 
 
+def tokenize_eval_batch_element(prompt: str, chosen: str, rejected: str, truncation_mode: str, tokenizer, max_length: int, max_prompt_length: int) -> Dict:
+    """Tokenize a single batch element.
+    
+       At this stage, we don't convert to PyTorch tensors yet; we just handle the truncation
+         in case the prompt + chosen or prompt + rejected responses is/are too long. First
+         we truncate the prompt; if we're still too long, we truncate the chosen/rejected.
+       
+       We also create the labels for the chosen/rejected responses, which are of length equal to
+         the sum of the length of the prompt and the chosen/rejected response, with -100 for the
+         prompt tokens.
+    """
+    chosen_tokens = tokenizer(chosen, add_special_tokens=False)
+    rejected_tokens = tokenizer(rejected, add_special_tokens=False)
+    prompt_tokens = tokenizer(prompt, add_special_tokens=False)
+
+    assert tokenizer.eos_token_id not in prompt_tokens['input_ids'], f"Prompt contains EOS token: {prompt}"
+    assert tokenizer.eos_token_id not in chosen_tokens['input_ids'], f"Chosen response contains EOS token: {chosen}"
+    assert tokenizer.eos_token_id not in rejected_tokens['input_ids'], f"Rejected response contains EOS token: {rejected}"
+
+    chosen_tokens['input_ids'].append(tokenizer.eos_token_id)
+    chosen_tokens['attention_mask'].append(1)
+
+    rejected_tokens['input_ids'].append(tokenizer.eos_token_id)
+    rejected_tokens['attention_mask'].append(1)
+
+    longer_response_length = max(len(chosen_tokens['input_ids']), len(rejected_tokens['input_ids']))
+
+    # if combined sequence is too long, truncate the prompt
+    if len(prompt_tokens['input_ids']) + longer_response_length > max_length:
+        if truncation_mode == 'keep_start':
+            prompt_tokens = {k: v[:max_prompt_length] for k, v in prompt_tokens.items()}
+        elif truncation_mode == 'keep_end':
+            prompt_tokens = {k: v[-max_prompt_length:] for k, v in prompt_tokens.items()}
+        else:
+            raise ValueError(f'Unknown truncation mode: {truncation_mode}')
+
+    # if that's still too long, truncate the response
+    if len(prompt_tokens['input_ids']) + longer_response_length > max_length:
+        chosen_tokens = {k: v[:max_length - max_prompt_length] for k, v in chosen_tokens.items()}
+        rejected_tokens = {k: v[:max_length - max_prompt_length] for k, v in rejected_tokens.items()}
+
+    # Create labels
+    chosen_sequence_tokens = {k: prompt_tokens[k] + chosen_tokens[k] for k in chosen_tokens}
+    rejected_sequence_tokens = {k: prompt_tokens[k] + rejected_tokens[k] for k in rejected_tokens}
+    chosen_sequence_tokens['labels'] = chosen_sequence_tokens['input_ids'][:]
+    chosen_sequence_tokens['labels'][:len(prompt_tokens['input_ids'])] = [-100] * len(prompt_tokens['input_ids'])
+    rejected_sequence_tokens['labels'] = rejected_sequence_tokens['input_ids'][:]
+    rejected_sequence_tokens['labels'][:len(prompt_tokens['input_ids'])] = [-100] * len(prompt_tokens['input_ids'])
+
+    batch = {}
+
+    batch['prompt'] = prompt
+    batch['chosen'] = prompt + chosen
+    batch['rejected'] = prompt + rejected
+    batch['chosen_response_only'] = chosen
+    batch['rejected_response_only'] = rejected
+
+    for k, toks in {'chosen': chosen_sequence_tokens, 'rejected': rejected_sequence_tokens, 'prompt': prompt_tokens}.items():
+        for type_key, tokens in toks.items():
+            if type_key == 'token_type_ids':
+                continue
+            batch[f'{k}_{type_key}'] = tokens
+
+    return batch
+
 
 class MyTrainer(BasicTrainer):
     def __init__(self, policy: nn.Module, config: DictConfig, seed: int, run_dir: str, reference_model: Optional[nn.Module] = None, rank: int = 0, world_size: int = 1):
@@ -647,8 +672,8 @@ class MyTrainer(BasicTrainer):
             flat_data = []
             eval_set = datasets.load_dataset("tatsu-lab/alpaca_eval", "alpaca_eval", cache_dir='../datasets')["eval"]
 
-            for prompt, data in eval_set.items():
-                flat_data.append((prompt, data['responses'], data['pairs'], data['sft_target'], 'keep_end'))
+            for instruction, output, _, _ in eval_set:
+                flat_data.append((instruction, output, 'keep_end'))
         
         tokenizer = transformers.AutoTokenizer.from_pretrained("../../../models/Eleuther-AI/pythia-2.8b")
         collate_fn = get_collate_fn(tokenizer)
@@ -661,13 +686,13 @@ class MyTrainer(BasicTrainer):
                 random.shuffle(flat_data)
 
             batch = []
-            for prompt, responses, pairs, _, truncation_mode in flat_data:
+            for instruction, output, truncation_mode in flat_data:
                 if done:
                     break
                 for p in pairs:
                     if done:
                         break
-                    batch_element = tokenize_batch_element(prompt, responses[p[0]], responses[p[1]], truncation_mode, tokenizer, 512, 256)
+                    batch_element = tokenize_eval_batch_element(instruction, output, output, truncation_mode, tokenizer, 512, 256)
                     batch.append(batch_element)
                     example_idx += 1
                     if len(batch) == batch_size:

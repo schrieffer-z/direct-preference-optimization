@@ -76,7 +76,11 @@ def main(config: DictConfig):
     
     # add run info to local run dir
     pos = config.local_run_dir.find('_')
-    run_info = f'beta{config.loss.beta}_lr{config.lr}_bs{config.batch_size}_ebs{config.eval_batch_size}'
+    if config.loss=='sft':
+        run_info = f'{config.loss}_{config.model}_lr{config.lr}_bs{config.batch_size}_ebs{config.eval_batch_size}'
+    else:
+        run_info = f'{config.loss}_{config.model}_beta{config.loss.beta}_lr{config.lr}_bs{config.batch_size}_ebs{config.eval_batch_size}'
+    
     config.local_run_dir=config.local_run_dir[:pos]+run_info+config.local_run_dir[pos:]
     os.makedirs(config.local_run_dir, exist_ok=True)
 
